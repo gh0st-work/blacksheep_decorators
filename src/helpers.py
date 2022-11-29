@@ -1,6 +1,8 @@
-from typing import Dict, Any, Optional, List
+from enum import Enum
+from typing import Dict, Any, Optional, List, Tuple
 
 from blacksheep import Request, Headers, pretty_json, Response
+from blacksheep.client import ClientSession
 from schema import Schema
 from addict import Dict as Addict
 
@@ -69,6 +71,89 @@ class SchemaDict:
 
 	def __getattr__(self, key: str):
 		return self._addict[key]
+
+
+def headers_from_dict(headers_dict: Dict[str, str]) -> List[Tuple[bytes, bytes]]:
+	return [
+		(k.encode(), v.encode())
+		for k, v in headers_dict.items()
+	]
+
+
+class LocationInfo:
+
+	def __init__(self, dict_data: Dict[str, Any]):
+		self.dict_data = dict_data
+		self.addict = Addict(**dict_data)
+		self.ip: str = self.addict.ip
+		self.network: Optional[str] = self.addict.ip
+		self.version: str = self.addict.version
+		self.city: str = self.addict.city
+		self.region: str = self.addict.region
+		self.region_code: str = self.addict.region_code
+		self.country: str = self.addict.country
+		self.country_name: str = self.addict.country_name
+		self.country_code: str = self.addict.country_code
+		self.country_code_iso3: str = self.addict.country_code_iso3
+		self.country_capital: str = self.addict.country_capital
+		self.country_tld: str = self.addict.country_tld
+		self.continent_code: str = self.addict.continent_code
+		self.in_eu: bool = self.addict.in_eu
+		self.postal: str = self.addict.postal
+		self.latitude: float = self.addict.latitude
+		self.longitude: float = self.addict.longitude
+		self.timezone: str = self.addict.timezone
+		self.utc_offset: str = self.addict.utc_offset
+		self.country_calling_code: str = self.addict.country_calling_code
+		self.currency: str = self.addict.currency
+		self.currency_name: str = self.addict.currency_name
+		self.languages: str = self.addict.languages
+		self.country_area: float = self.addict.country_area
+		self.country_population: int = self.addict.country_population
+		self.asn: str = self.addict.asn
+		self.org: str = self.addict.org
+		self.hostname: Optional[str] = self.addict.hostname
+
+	@classmethod
+	async def from_ip(cls, ip: str):
+		async with ClientSession() as client:
+			response = await client.get(
+				url=f'https://ipapi.co/{ip}/json/',
+				headers=headers_from_dict(
+					{
+						'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, '
+						              'like Gecko) Chrome/106.0.0.0 YaBrowser/22.11.0.2500 Yowser/2.5 '
+						              'Safari/537.36 '
+					}
+				)
+			)
+			data = await response.json()
+			return cls(dict_data=data)
+
+
+class Rights(Enum):
+	default = 'default'
+	admin = 'admin'
+
+
+def check_rights_from_headers(
+	headers: Headers,
+	minimal_rights: Optional[Rights] = None,
+) -> Tuple[Rights, bool]:
+	rights = Rights.default
+	rights_raw = headers.get_single(b'Rights').decode()
+	if rights_raw == Rights.admin.value:
+		rights = Rights.admin
+
+	allowed = False
+	rights_ordered = [r for r in Rights]
+	for i, right_in_order in enumerate(rights_ordered):
+		if minimal_rights == right_in_order:
+			if rights in rights_ordered[i:]:
+				allowed = True
+				break
+
+	return rights, allowed
 
 
 def failure_response(status: int = 400, **kwargs) -> Response:
