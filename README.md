@@ -56,7 +56,7 @@ def check_auth(minimal_rights: Optional[Rights] = None):
 				request=request,
 				services=services,
 				rights=rights
-				# your classes, with any key, here key is 'rights' with variable 'rights', that is 'Rights' class
+				# your classes, with any key, in example only one class 'Rights' (variable 'rights') with key 'rights'
 			)
 
 		return wrapper
