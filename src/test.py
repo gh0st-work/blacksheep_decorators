@@ -164,7 +164,7 @@ async def test_decorators(app):
 		assert response_data['success'] is True
 		assert response_data['rights'] == client_rights.value
 		assert response_data['some_checkbox_info'] == data['some_checkbox_info']
-		assert response_data['home_id'] == 10
+		assert response_data['home_id'] == path_id
 
 	async def test_no_rights():
 		client_rights = Rights.default
@@ -193,7 +193,7 @@ async def test_decorators(app):
 		assert response_data['success'] is True
 		assert response_data['rights'] == client_rights.value
 		assert response_data['some_checkbox_info'] is data['some_checkbox_info']
-		assert response_data['home_id'] == 10
+		assert response_data['home_id'] == path_id
 
 	await test_ok()
 	await test_no_rights()
