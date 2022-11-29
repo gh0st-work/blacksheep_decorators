@@ -12,13 +12,13 @@ class TempInjected:
 		self.injections_types = []
 		self.injections_class_names = []
 		for injection in self.injections:
-			raw_injection_type = injection.__class__
-			self.injections_types.append(raw_injection_type)
+			injection_type = injection.__class__
+			self.injections_types.append(injection_type)
 
-			raw_injection_class_name = class_name(raw_injection_type)
+			raw_injection_class_name = class_name(injection_type)
 			self.injections_class_names.append(raw_injection_class_name)
 
-			self.services.set(raw_injection_type, injection)
+			self.services.set(injection_type, injection)
 
 	def clean(self):
 		for injection_class_name in self.injections_class_names:
