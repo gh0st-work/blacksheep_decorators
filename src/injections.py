@@ -3,7 +3,7 @@ from blacksheep.server.normalization import normalize_handler, ensure_response
 from rodi import Services, class_name
 
 
-class TempInjected:
+class TempInject:
 
 	def __init__(self, services: Services, *args, **kwargs):
 		self.services = services
@@ -20,7 +20,10 @@ class TempInjected:
 
 			self.services.set(injection_type, injection)
 
-	def clean(self):
+	def __enter__(self) -> Services:
+		return self.services
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
 		for injection_class_name in self.injections_class_names:
 			del self.services._map[injection_class_name]
 		for injection_type in self.injections_types:
@@ -37,13 +40,11 @@ async def with_deps_injection(
 	route_like = Route('', orig_handler)  # For this (normal typing & beauty) are needed extra changes in core
 	route_like.param_names = list(request.route_values.keys())
 
-	temp_injection = TempInjected(services, *args, **kwargs)
-	services = temp_injection.services
-	norm_handler = normalize_handler(
-		route=route_like,
-		services=services
-	)
-	response = ensure_response(await norm_handler(request))
-	temp_injection.clean()
-	services = temp_injection.services
+	with TempInject(services, *args, **kwargs) as temp_services:
+		norm_handler = normalize_handler(
+			route=route_like,
+			services=temp_services
+		)
+		response = ensure_response(await norm_handler(request))
+
 	return response
