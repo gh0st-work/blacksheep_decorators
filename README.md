@@ -1,5 +1,5 @@
 # blacksheep_decorators
-Example implementation of decorators in blacksheep at a non-framework level.
+Example implementation of decorators DI (Dependency injection) in blacksheep at a non-framework level.
 
 ### Install
 - clone
