@@ -34,7 +34,7 @@ async def with_deps_injection(
 	*args,
 	**kwargs
 ):
-	route_like = Route('', orig_handler)  # For this are needed changes in core
+	route_like = Route('', orig_handler)  # For this (normal typing & beauty) are needed extra changes in core
 	route_like.param_names = list(request.route_values.keys())
 
 	temp_injection = TempInjected(services, *args, **kwargs)
