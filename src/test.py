@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 
 from blacksheep import Headers
+from blacksheep.client import ClientSession
 from blacksheep.messages import Request, Response
 from blacksheep.server import Application
 from blacksheep.testing import MockReceive, MockSend
@@ -10,7 +11,7 @@ from rodi import Services
 from schema import SchemaError, Schema
 
 from src.injections import with_deps_injection
-from src.helpers import extract_raw_data, RawData, SchemaDict, failure_response, success_response
+from src.helpers import extract_raw_data, RawData, SchemaDict, failure_response, success_response, Addict
 import json
 
 
@@ -45,6 +46,77 @@ async def test_decorators(app):
 	class Rights(Enum):
 		default = 'default'
 		admin = 'admin'
+
+	class LocationInfo:
+		def __init__(self, raw_data: Dict[str, Any]):
+			_data = Addict(**raw_data)
+			self.ip: str = _data.ip
+			self.network: Optional[str] = _data.ip
+			self.version: str = _data.version
+			self.city: str = _data.city
+			self.region: str = _data.region
+			self.region_code: str = _data.region_code
+			self.country: str = _data.country
+			self.country_name: str = _data.country_name
+			self.country_code: str = _data.country_code
+			self.country_code_iso3: str = _data.country_code_iso3
+			self.country_capital: str = _data.country_capital
+			self.country_tld: str = _data.country_tld
+			self.continent_code: str = _data.continent_code
+			self.in_eu: bool = _data.in_eu
+			self.postal: str = _data.postal
+			self.latitude: float = _data.latitude
+			self.longitude: float = _data.longitude
+			self.timezone: str = _data.timezone
+			self.utc_offset: str = _data.utc_offset
+			self.country_calling_code: str = _data.country_calling_code
+			self.currency: str = _data.currency
+			self.currency_name: str = _data.currency_name
+			self.languages: str = _data.languages
+			self.country_area: float = _data.country_area
+			self.country_population: int = _data.country_population
+			self.asn: str = _data.asn
+			self.org: str = _data.org
+			self.hostname: Optional[str] = _data.hostname
+
+	def add_location_info():
+		def real_decorator(original_function):
+			# NO @functools.wraps, need core changes
+			async def wrapper(
+				request: Request,
+				services: Services,
+			) -> Response:
+
+				async with ClientSession() as client:
+					# ip = request.client_ip  # localhost limit
+					ip = '178.62.144.174'
+
+					def headers_from_dict(headers_dict: Dict[str, str]) -> List[Tuple[bytes, bytes]]:
+						return [
+							(k.encode(), v.encode())
+							for k, v in headers_dict.items()
+						]
+
+					response = await client.get(
+						url=f'https://ipapi.co/{ip}/json/',
+						headers=headers_from_dict({
+							'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, '
+										  'like Gecko) Chrome/106.0.0.0 YaBrowser/22.11.0.2500 Yowser/2.5 '
+										  'Safari/537.36 '
+						})
+					)
+					data = await response.json()
+					loc_info = LocationInfo(data)
+
+				return await with_deps_injection(
+					orig_handler=original_function,
+					request=request,
+					services=services,
+					loc_info=loc_info,
+				)
+
+			return wrapper
+		return real_decorator
 
 	def check_auth(minimal_rights: Optional[Rights] = None):
 		def real_decorator(original_function):
@@ -117,15 +189,18 @@ async def test_decorators(app):
 	@check_schema(
 		some_checkbox_info=bool
 	)
+	@add_location_info()
 	async def home(
 		home_id: int,  # from Route
 		rights: Rights,
 		data: SchemaDict,
+		loc_info: LocationInfo,
 	):
 		return success_response(
 			rights=rights.value,
 			some_checkbox_info=data.some_checkbox_info,
 			home_id=home_id,
+			city=loc_info.city,
 		)
 
 	await app.start()
@@ -165,6 +240,7 @@ async def test_decorators(app):
 		assert response_data['rights'] == client_rights.value
 		assert response_data['some_checkbox_info'] == data['some_checkbox_info']
 		assert response_data['home_id'] == path_id
+		assert response_data['city'] == 'Amsterdam'
 
 	async def test_no_rights():
 		client_rights = Rights.default
@@ -194,6 +270,7 @@ async def test_decorators(app):
 		assert response_data['rights'] == client_rights.value
 		assert response_data['some_checkbox_info'] is data['some_checkbox_info']
 		assert response_data['home_id'] == path_id
+		assert response_data['city'] == 'Amsterdam'
 
 	await test_ok()
 	await test_no_rights()
