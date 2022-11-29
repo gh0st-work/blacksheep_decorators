@@ -24,7 +24,7 @@ Example implementation of decorators DI (Dependency injection) in [blacksheep](h
 - wrap your handler with your decorator, after decorator @app.router.<method>(...)
 
 
-### Example:
+### Example
 ```python
 ...
 
