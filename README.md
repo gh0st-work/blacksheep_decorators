@@ -124,8 +124,9 @@ async def with_deps_injection(
 	*args,
 	**kwargs
 ):
-	route_like = Route('', orig_handler)
-	route_like.param_names = list(request.route_values.keys())
+	route_like = Route('', orig_handler)  # For this (normal typing & beauty) are needed extra changes in core
+	if request.route_values is not None:
+		route_like.param_names = list(request.route_values.keys())
 
 	with TempInject(services, *args, **kwargs) as temp_services:
 		norm_handler = normalize_handler(
